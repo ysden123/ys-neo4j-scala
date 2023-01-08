@@ -1,0 +1,2 @@
+MATCH (p:Person) WHERE exists((p)-[:SPOUSE]->()) RETURN p
+MATCH (p:Person) WHERE not exists((p)-[:SPOUSE]->()) RETURN p
