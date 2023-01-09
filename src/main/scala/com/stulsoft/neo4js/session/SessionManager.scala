@@ -6,12 +6,20 @@ package com.stulsoft.neo4js.session
 
 import com.stulsoft.neo4js.config.Configuration
 import com.typesafe.scalalogging.StrictLogging
-import org.neo4j.driver.{AuthTokens, GraphDatabase, Session}
+import org.neo4j.driver.Config.ConfigBuilder
+import org.neo4j.driver.{AuthTokens, Config, GraphDatabase, Session, SessionConfig}
 
+import java.util.concurrent.TimeUnit
 import scala.util.{Failure, Success, Try}
 
 object SessionManager extends StrictLogging:
-  private lazy val driver = GraphDatabase.driver(Configuration.uri, AuthTokens.basic(Configuration.username, Configuration.password))
+  private lazy val driverConfig = Config.builder()
+    .withConnectionTimeout(500, TimeUnit.MILLISECONDS)
+    .withMaxConnectionPoolSize(50)
+    .withConnectionAcquisitionTimeout(500, TimeUnit.MILLISECONDS)
+    .build()
+  private lazy val driver = GraphDatabase
+    .driver(Configuration.uri, AuthTokens.basic(Configuration.username, Configuration.password), driverConfig)
 
   def session(): Session =
     driver.session()

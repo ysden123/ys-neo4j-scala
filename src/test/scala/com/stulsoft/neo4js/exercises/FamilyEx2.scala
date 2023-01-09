@@ -6,14 +6,24 @@ package com.stulsoft.neo4js.exercises
 
 import com.stulsoft.neo4js.session.SessionManager
 import com.typesafe.scalalogging.StrictLogging
-import org.neo4j.driver.TransactionConfig
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Using}
 
-object FamilyEx1 extends StrictLogging:
+object FamilyEx2 extends StrictLogging:
+  private lazy val couples = List(
+    (Person("Patrick", "male"), Person("Hellen", "female")),
+    (Person("Anderson", "male"), Person("Stella", "female")),
+  )
+
+  private lazy val singles = List(Person("PatrickS", "male"),
+    Person("HellenS", "female"),
+    Person("AndersonS", "male"),
+    Person("StellaS", "female"),
+  )
+
   private def createFamily(): Unit =
     logger.info("==>createFamily")
     Using(SessionManager.session()) {
@@ -29,57 +39,48 @@ object FamilyEx1 extends StrictLogging:
           val createConstrainQuery = "CREATE CONSTRAINT person_name IF NOT EXISTS FOR (p:Person) REQUIRE p.name IS UNIQUE"
           tc.run(createConstrainQuery)
         })
-
-        session.executeWrite(tc => {
-          logger.info("Adding couples")
-          var addCoupleQuery = "CREATE (p1:Person {name: 'Adam', sex: 'male'}) -[r1:SPOUSE]-> (p2:Person {name: 'Sara', sex: 'female'}) -[r2:SPOUSE]-> (p1)"
-          tc.run(addCoupleQuery)
-
-          addCoupleQuery = "CREATE (p1:Person {name: 'Smith', sex: 'male'}) -[r1:SPOUSE]-> (p2:Person {name: 'Donna', sex: 'female'}) -[r2:SPOUSE]-> (p1)"
-          tc.run(addCoupleQuery)
-
-          // Error: duplicated 'Smith' Person
-          /*
-                  addCoupleQuery = "CREATE (p1:Person {name: 'Smith', sex: 'male'}) -[r1:SPOUSE]-> (p2:Person {name: 'Lisa', sex: 'female'}) -[r2:SPOUSE]-> (p1)"
-                  tx.run(addCoupleQuery)
-          */
-        })
       }
     } match
       case Success(_) =>
       case Failure(exception) => logger.error(exception.getMessage, exception)
 
-  private def addManyCouples(): Unit =
-    logger.info("==>addManyCouples")
+  private def addAllPersons(): Unit =
+    logger.info("==>addAllPersons")
     Using(SessionManager.session()) {
       session =>
-        session.executeWrite(tc => {
-          List(
-            (Person("Patrick", "male"), Person("Hellen", "female")),
-            (Person("Anderson", "male"), Person("Stella", "female")),
-          ).foreach(couple => {
-            val addCoupleQuery = s"CREATE (p1: ${couple._1}) -[r1:SPOUSE]-> (p2: ${couple._2}) -[r2:SPOUSE]-> (p1)"
+        session.executeWrite(tc =>
+          couples.foreach(couple =>
+            val addCoupleQuery = s"CREATE (:${couple._1}) CREATE (:${couple._2})"
             tc.run(addCoupleQuery)
-          })
-        })
+          )
+
+          singles.foreach(person =>
+            val addPersonQuery = s"CREATE (p: $person)"
+            tc.run(addPersonQuery)
+          )
+        )
     } match
       case Success(_) =>
       case Failure(exception) => logger.error(exception.getMessage, exception)
 
-  private def addManySingles(): Unit =
-    logger.info("==>addManySingles")
+  private def wedding(): Unit =
+    logger.info("==>wedding")
     Using(SessionManager.session()) {
       session =>
-        session.executeWrite(tc => {
-          List(Person("PatrickS", "male"),
-            Person("HellenS", "female"),
-            Person("AndersonS", "male"),
-            Person("StellaS", "female"),
-          ).foreach(person => {
-            val addSingleQuery = s"CREATE (p1: $person)"
-            tc.run(addSingleQuery)
-          })
-        })
+        session.executeWrite(tc =>
+          couples.foreach(couple =>
+            val weddingQuery =
+              s"""
+                 |MATCH
+                 |   (a:Person),
+                 |   (b:Person)
+                 |WHERE a.name = '${couple._1.name}' AND b.name = '${couple._2.name}'
+                 |CREATE (a) -[:SPOUSE]->(b)
+                 |CREATE (b) -[:SPOUSE]->(a)
+                 |""".stripMargin
+            tc.run(weddingQuery)
+          )
+        )
     } match
       case Success(_) =>
       case Failure(exception) => logger.error(exception.getMessage, exception)
@@ -93,7 +94,7 @@ object FamilyEx1 extends StrictLogging:
           tc.run(findAllSinglesQuery)
             .list()
             .asScala
-            .map(record => Person.fromRecord(record, "p"))
+            .map(record => Person.fromValue(record.get("p")))
             .foreach(person => logger.info("{}", person))
         })
     } match
@@ -116,13 +117,30 @@ object FamilyEx1 extends StrictLogging:
       case Success(_) =>
       case Failure(exception) => logger.error(exception.getMessage, exception)
 
+  private def findAllCouples(): Unit =
+    logger.info("==>findAllCouples")
+    Using(SessionManager.session()) {
+      session =>
+        session.executeRead(tc => {
+          val findAllSinglesQuery = "MATCH (p1:Person {sex: 'male'})-[:SPOUSE]->(p2:Person) RETURN p1,p2"
+          tc.run(findAllSinglesQuery)
+            .list()
+            .asScala
+            .map(record => (Person.fromRecord(record, "p1"), Person.fromRecord(record, "p2")))
+            .foreach(persons => logger.info("{} --> {}", persons._1, persons._2))
+        })
+    } match
+      case Success(_) =>
+      case Failure(exception) => logger.error(exception.getMessage, exception)
+
   def main(args: Array[String]): Unit =
     logger.info("==>main")
     val start = System.currentTimeMillis()
     createFamily()
-    addManyCouples()
-    addManySingles()
+    addAllPersons()
+    wedding()
     findAllSingles()
     findAllSingles2()
+    findAllCouples()
     logger.info("Completed in {}", Duration(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS))
     SessionManager.closeDriver()
