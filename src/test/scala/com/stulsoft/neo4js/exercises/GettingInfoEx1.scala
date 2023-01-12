@@ -4,6 +4,7 @@
 
 package com.stulsoft.neo4js.exercises
 
+import com.stulsoft.neo4js.exercises.GettingInfoEx1.logger
 import com.stulsoft.neo4js.session.SessionManager
 import com.typesafe.scalalogging.StrictLogging
 import org.neo4j.driver.internal.value.NodeValue
@@ -45,8 +46,28 @@ object GettingInfoEx1 extends StrictLogging:
       case Success(_) =>
       case Failure(exception) => logger.error(exception.getMessage, exception)
 
-  def main(args: Array[String]): Unit =
-    logger.info("==>main")
-    showNode()
+  private def fetchNonexistentParameter():Unit =
+    logger.info("==>fetchNonexistentParameter")
 
-    SessionManager.closeDriver()
+    Using(SessionManager.session()) {
+      session => {
+        session.executeRead(tx => {
+          val query = "MATCH (p:Person) RETURN (p)"
+          val result = tx.run(query)
+          val record = result.peek()
+          val value = record.get("p")
+//          val nonexistent = value.get("nonexistent").asString()
+          val nonexistent = value.get("nonexistent", "")
+          logger.info("nonexistent: {}", nonexistent)
+        })
+      }
+    } match
+      case Success(_) =>
+      case Failure(exception) => logger.error(exception.getMessage, exception)
+
+  def main(args: Array[String]): Unit =
+      logger.info("==>main")
+      showNode()
+      fetchNonexistentParameter()
+
+      SessionManager.closeDriver()

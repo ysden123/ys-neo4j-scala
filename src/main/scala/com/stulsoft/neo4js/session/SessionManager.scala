@@ -7,6 +7,7 @@ package com.stulsoft.neo4js.session
 import com.stulsoft.neo4js.config.Configuration
 import com.typesafe.scalalogging.StrictLogging
 import org.neo4j.driver.Config.ConfigBuilder
+import org.neo4j.driver.async.AsyncSession
 import org.neo4j.driver.{AuthTokens, Config, GraphDatabase, Session, SessionConfig}
 
 import java.util.concurrent.TimeUnit
@@ -23,6 +24,9 @@ object SessionManager extends StrictLogging:
 
   def session(): Session =
     driver.session()
+
+  def asyncSession():AsyncSession =
+    driver.session(classOf[AsyncSession])
 
   def closeDriver(): Unit =
     driver.close()
