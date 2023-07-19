@@ -32,10 +32,10 @@ object FamilyEx1 extends StrictLogging:
 
         session.executeWrite(tc => {
           logger.info("Adding couples")
-          var addCoupleQuery = "CREATE (p1:Person {name: 'Adam', sex: 'male'}) -[r1:SPOUSE]-> (p2:Person {name: 'Sara', sex: 'female'}) -[r2:SPOUSE]-> (p1)"
+          var addCoupleQuery = "CREATE (p1:Person {name: 'Adam', sex: 'male'}) -[r1:SPOUSE {scope:1}]-> (p2:Person {name: 'Sara', sex: 'female'}) -[r2:SPOUSE {scope:1}]-> (p1)"
           tc.run(addCoupleQuery)
 
-          addCoupleQuery = "CREATE (p1:Person {name: 'Smith', sex: 'male'}) -[r1:SPOUSE]-> (p2:Person {name: 'Donna', sex: 'female'}) -[r2:SPOUSE]-> (p1)"
+          addCoupleQuery = "CREATE (p1:Person {name: 'Smith', sex: 'male'}) -[r1:SPOUSE {scope:1}]-> (p2:Person {name: 'Donna', sex: 'female'}) -[r2:SPOUSE {scope:1}]-> (p1)"
           tc.run(addCoupleQuery)
 
           // Error: duplicated 'Smith' Person
@@ -76,7 +76,7 @@ object FamilyEx1 extends StrictLogging:
             Person("AndersonS", "male"),
             Person("StellaS", "female"),
           ).foreach(person => {
-            val addSingleQuery = s"CREATE (p1: $person)"
+            val addSingleQuery = s"MERGE (p1: $person)"
             tc.run(addSingleQuery)
           })
         })
@@ -121,6 +121,7 @@ object FamilyEx1 extends StrictLogging:
     val start = System.currentTimeMillis()
     createFamily()
     addManyCouples()
+    addManySingles()
     addManySingles()
     findAllSingles()
     findAllSingles2()
