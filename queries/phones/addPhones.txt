@@ -1,0 +1,1 @@
+CREATE (p1:Phone {number: '+9'}) -[:FOLLOWING_BY {prefix:'prefix'}] -> (p2:Phone {number: '+9-072'})
